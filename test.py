@@ -39,8 +39,8 @@ print(info)
 cmd = ffmpeg.input(video_path).filter('fps', fps=fps).filter('scale', width, height)
     # .filter('scale', self.size, self.size)
 
-out, _ = cmd.output('pipe:', format='rawvideo', pix_fmt='rgb24').run(capture_stdout=True, quiet=True)
-
-print(out)
+out, err = cmd.output('pipe:', format='rawvideo', pix_fmt='rgb24').run(capture_stdout=True, capture_stderr=True)
+# print(err)
+# print(out)
 video = np.frombuffer(out, np.uint8).reshape(
     [-1, height, width, 3])

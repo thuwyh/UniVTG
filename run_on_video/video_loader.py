@@ -112,7 +112,7 @@ class VideoLoader(Dataset):
                     cmd = cmd.crop(x, y, self.size, self.size)
                 out, _ = (
                     cmd.output('pipe:', format='rawvideo', pix_fmt='rgb24')
-                    .run(capture_stdout=True, quiet=True)
+                    .run(capture_stdout=True, capture_stderr=True)
                 )
                 if self.centercrop and isinstance(self.size, int):
                     height, width = self.size, self.size
