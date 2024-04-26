@@ -17,7 +17,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_id)
 #################################
 model_version = "ViT-B/32"
 output_feat_size = 512
-clip_len = 2
+clip_len = 1
 overwrite = True
 num_decoding_thread = 4
 half_precision = False
@@ -74,7 +74,6 @@ def load_data(save_dir):
 
     vid = torch.from_numpy(l2_normalize_np_array(vid))
     txt = torch.from_numpy(l2_normalize_np_array(txt))
-    clip_len = 2
     ctx_l = vid.shape[0]
 
     timestamp =  ( (torch.arange(0, ctx_l) + clip_len / 2) / ctx_l).unsqueeze(1).repeat(1, 2)
@@ -129,7 +128,7 @@ def forward(model, save_dir, query):
     
 def extract_vid(vid_path, state):
     history = state['messages']
-    vid_features = vid2clip(clip_model, vid_path, args.save_dir)
+    vid_features = vid2clip(clip_model, vid_path, args.save_dir, clip_len=clip_len)
     history.append({"role": "user", "content": "Finish extracting video features."}) 
     history.append({"role": "system", "content": "Please Enter the text query."}) 
     chat_messages = [(history[i]['content'], history[i+1]['content']) for i in range(0, len(history),2)]
