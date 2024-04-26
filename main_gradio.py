@@ -1,5 +1,4 @@
 import os
-import pdb
 import time
 import torch
 import gradio as gr
@@ -23,12 +22,27 @@ overwrite = True
 num_decoding_thread = 4
 half_precision = False
 
-clip_model, _ = clip.load(model_version, device=args.gpu_id, jit=False)
 
 import logging
-import torch.backends.cudnn as cudnn
 from main.config import TestOptions, setup_model
 from utils.basic_utils import l2_normalize_np_array
+
+import torch
+
+# Check if MPS is available
+if torch.backends.mps.is_available():
+    print("MPS is available. Using Apple Silicon GPU.")
+    device = torch.device("mps")  # Use Apple Silicon GPU
+elif torch.cuda.is_available():
+    import torch.backends.cudnn as cudnn
+    cudnn.benchmark = True
+    cudnn.deterministic = False
+    print("CUDA is available. Using GPU.")
+    device = torch.device("cuda")  # Use Apple Silicon GPU
+else:
+    print("Using CPU.")
+    device = torch.device("cpu")  # Fallback to CPU
+clip_model, _ = clip.load(model_version, device=device, jit=False)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s.%(msecs)03d:%(levelname)s:%(name)s - %(message)s",
@@ -39,15 +53,14 @@ def load_model():
     logger.info("Setup config, data and model...")
     opt = TestOptions().parse(args)
     # pdb.set_trace()
-    cudnn.benchmark = True
-    cudnn.deterministic = False
 
     if opt.lr_warmup > 0:
         total_steps = opt.n_epoch
         warmup_steps = opt.lr_warmup if opt.lr_warmup > 1 else int(opt.lr_warmup * total_steps)
         opt.lr_warmup = [warmup_steps, total_steps]
 
-    model, criterion, _, _ = setup_model(opt)
+    model, criterion, _, _ = setup_model(opt, device=device)
+    model.to(device)
     return model
 
 vtg_model = load_model()
@@ -72,19 +85,19 @@ def load_data(save_dir):
         tef = torch.stack([tef_st, tef_ed], dim=1)  # (Lv, 2)
         vid = torch.cat([vid, tef], dim=1)  # (Lv, Dv+2)
 
-    src_vid = vid.unsqueeze(0).cuda()
-    src_txt = txt.unsqueeze(0).cuda()
-    src_vid_mask = torch.ones(src_vid.shape[0], src_vid.shape[1]).cuda()
-    src_txt_mask = torch.ones(src_txt.shape[0], src_txt.shape[1]).cuda()
+    src_vid = vid.unsqueeze(0).to(device)
+    src_txt = txt.unsqueeze(0).to(device)
+    src_vid_mask = torch.ones(src_vid.shape[0], src_vid.shape[1]).to(device)
+    src_txt_mask = torch.ones(src_txt.shape[0], src_txt.shape[1]).to(device)
 
     return src_vid, src_txt, src_vid_mask, src_txt_mask, timestamp, ctx_l
 
 def forward(model, save_dir, query):
     src_vid, src_txt, src_vid_mask, src_txt_mask, timestamp, ctx_l = load_data(save_dir)
-    src_vid = src_vid.cuda(args.gpu_id)
-    src_txt = src_txt.cuda(args.gpu_id)
-    src_vid_mask = src_vid_mask.cuda(args.gpu_id)
-    src_txt_mask = src_txt_mask.cuda(args.gpu_id)
+    src_vid = src_vid.to(device)
+    src_txt = src_txt.to(device)
+    src_vid_mask = src_vid_mask.to(device)
+    src_txt_mask = src_txt_mask.to(device)
 
     model.eval()
     with torch.no_grad():
@@ -209,7 +222,7 @@ with gr.Blocks(css=css) as demo:
                 total_tokens_str = gr.Markdown(elem_id="total_tokens_str")
                 
                 chatbot = gr.Chatbot(elem_id="chatbox")
-                input_message = gr.Textbox(show_label=False, placeholder="Enter text query and press enter", visible=True).style(container=False)
+                input_message = gr.Textbox(show_label=False, placeholder="Enter text query and press enter", visible=True, container=False)
                 btn_submit = gr.Button("Step3: Enter your text query")
                 btn_clear_conversation = gr.Button("🔃 Clear")
 
@@ -231,8 +244,9 @@ with gr.Blocks(css=css) as demo:
     vid_ext.click(extract_vid, [video_inp, state], [input_message, chatbot])
     vidsub_btn.click(subvid_fn, [video_id], [video_inp])
 
-    demo.load(queur=False)
+    # demo.load(queur=False)
 
 
-demo.queue(concurrency_count=10)
-demo.launch(height='800px', server_port=2253, debug=True, share=True)
+# demo.queue(concurrency_count=10)
+if __name__ == '__main__':
+    demo.launch(height='800px', server_port=2253, debug=True)

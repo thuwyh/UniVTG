@@ -63,8 +63,8 @@ def extractor(vid_path, text, output_file):
               if len(video.shape) == 4:
                   video = preprocess(video)
                   n_chunk = len(video)
-                  vid_features = th.cuda.FloatTensor(
-                      n_chunk, output_feat_size).fill_(0)
+                  vid_features = th.FloatTensor(
+                      n_chunk, output_feat_size).fill_(0).to(device)
                   n_iter = int(math.ceil(n_chunk))
                   for i in range(n_iter):
                       min_ind = i

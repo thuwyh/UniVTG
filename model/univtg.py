@@ -406,8 +406,9 @@ class LinearLayer(nn.Module):
         return x  # (N, L, D)
 
 
-def build_model(args):
-    device = torch.device(args.device)
+def build_model(args, device=None):
+    if device is None:
+        device = torch.device(args.device)
 
     transformer = build_transformer(args)
     position_embedding, txt_position_embedding = build_position_encoding(args)

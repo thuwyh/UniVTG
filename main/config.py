@@ -224,7 +224,7 @@ class BaseOptions(object):
                 opt_dict[key] = value
             opt = argparse.Namespace(**opt_dict)    
             opt.model_dir = os.path.dirname(opt.resume)
-            torch.cuda.set_device(opt.gpu_id)
+            # torch.cuda.set_device(opt.gpu_id)
             
         if opt.debug:
             opt.results_root = os.path.sep.join(opt.results_root.split(os.path.sep)[:-1] + ["debug_results", ])
@@ -334,17 +334,21 @@ class WarmupStepLR(torch.optim.lr_scheduler.StepLR):
         else:
             return [base_lr * self.gamma ** ((self.last_epoch -  self.warmup_steps)// self.step_size) for base_lr in self.base_lrs]
 
-def setup_model(opt):
+def setup_model(opt, device=None):
     """setup model/optimizer/scheduler and load checkpoints when needed"""
     logger.info("setup model/optimizer/scheduler")
 
     importer = importlib.import_module('.'.join(['model', opt.model_id]))
-    model, criterion = importer.build_model(opt)
+    model, criterion = importer.build_model(opt, device=device)
 
-    if int(opt.device) >= 0:
-        logger.info("CUDA enabled.")
-        model.to(opt.gpu_id)
-        criterion.to(opt.gpu_id)
+    if device is None:
+        if int(opt.device) >= 0:
+            logger.info("CUDA enabled.")
+            model.to(opt.gpu_id)
+            criterion.to(opt.gpu_id)
+    else:
+        model.to(device)
+        criterion.to(device)
 
     param_dicts = [{"params": [p for n, p in model.named_parameters() if p.requires_grad]}]
     optimizer = torch.optim.AdamW(param_dicts, lr=opt.lr, weight_decay=opt.wd)

@@ -1,0 +1,1 @@
+python main_gradio.py --resume ./results/model_best.ckpt

@@ -5,6 +5,7 @@ import os
 import numpy as np
 import ffmpeg
 import math
+import traceback
 
 
 def convert_to_float(frac_str):
@@ -85,6 +86,7 @@ class VideoLoader(Dataset):
                 info = self._get_video_info(video_path)
                 h, w = info["height"], info["width"]
             except Exception:
+                print("load failed")
                 print('ffprobe failed at: {}'.format(video_path))
                 return {'video': th.zeros(1), 'input': video_path,'info': {}}
             try:
@@ -119,7 +121,10 @@ class VideoLoader(Dataset):
                 video = th.from_numpy(video.astype('float32'))
                 video = video.permute(0, 3, 1, 2)
             except:
+                traceback.print_exc()
                 return {'video': th.zeros(1), 'input': video_path,'info': {}}
         else:
+            print('video_loader.py: video not found.')
             video = th.zeros(1)
+
         return {'video': video, 'input': video_path}

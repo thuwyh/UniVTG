@@ -18,7 +18,7 @@ import argparse
 @torch.no_grad()
 def vid2clip(model, vid_path, output_file, 
              model_version="ViT-B/32", output_feat_size=512,
-             clip_len=2, overwrite=True, num_decoding_thread=4, half_precision=False):
+             clip_len=2, overwrite=True, num_decoding_thread=1, half_precision=False):
     dataset = VideoLoader(
         vid_path,
         framerate=1/clip_len,
@@ -41,6 +41,7 @@ def vid2clip(model, vid_path, output_file,
     totatl_num_frames = 0
     with th.no_grad():
         for k, data in enumerate(tqdm(loader)):
+            print(data['video'])
             input_file = data['input'][0]
             if os.path.isfile(output_file):
                 # print(f'Video {input_file} already processed.')
@@ -52,8 +53,8 @@ def vid2clip(model, vid_path, output_file,
                 if len(video.shape) == 4:
                     video = preprocess(video)
                     n_chunk = len(video)
-                    vid_features = th.cuda.FloatTensor(
-                        n_chunk, output_feat_size).fill_(0)
+                    vid_features = th.FloatTensor(
+                        n_chunk, output_feat_size).fill_(0).to(device_id)
                     n_iter = int(math.ceil(n_chunk))
                     for i in range(n_iter):
                         min_ind = i
